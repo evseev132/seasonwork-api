@@ -12,9 +12,9 @@ from schemas import (
     TaskHoursUpdateRequest,
     TaskPhotoUpdateRequest,
     TaskResponse,
+    TaskReviewUpdateRequest,
     TaskStatusUpdateRequest,
     TaskUpdateRequest,
-    TaskReviewUpdateRequest,
     UserRegisterRequest,
     UserResponse,
 )
@@ -63,8 +63,8 @@ def root():
 
 @app.post("/register", response_model=UserResponse)
 def register(
-    request: UserRegisterRequest,
-    db: Session = Depends(get_db)
+        request: UserRegisterRequest,
+        db: Session = Depends(get_db)
 ):
     allowed_roles = ["ADMIN", "EMPLOYEE"]
 
@@ -98,8 +98,8 @@ def register(
 
 @app.post("/login", response_model=LoginResponse)
 def login(
-    request: LoginRequest,
-    db: Session = Depends(get_db)
+        request: LoginRequest,
+        db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.login == request.login).first()
 
@@ -127,7 +127,7 @@ def login(
 
 @app.get("/users", response_model=List[UserResponse])
 def get_users(
-    db: Session = Depends(get_db)
+        db: Session = Depends(get_db)
 ):
     users = db.query(User).all()
 
@@ -136,7 +136,7 @@ def get_users(
 
 @app.get("/users/employees", response_model=List[UserResponse])
 def get_employees(
-    db: Session = Depends(get_db)
+        db: Session = Depends(get_db)
 ):
     employees = db.query(User).filter(User.role == "EMPLOYEE").all()
 
@@ -145,7 +145,7 @@ def get_employees(
 
 @app.get("/tasks", response_model=List[TaskResponse])
 def get_all_tasks(
-    db: Session = Depends(get_db)
+        db: Session = Depends(get_db)
 ):
     tasks = db.query(Task).all()
 
@@ -157,8 +157,8 @@ def get_all_tasks(
 
 @app.get("/tasks/employee/{employee_id}", response_model=List[TaskResponse])
 def get_tasks_by_employee(
-    employee_id: int,
-    db: Session = Depends(get_db)
+        employee_id: int,
+        db: Session = Depends(get_db)
 ):
     tasks = db.query(Task).filter(Task.employee_id == employee_id).all()
 
@@ -170,8 +170,8 @@ def get_tasks_by_employee(
 
 @app.post("/tasks", response_model=TaskResponse)
 def create_task(
-    request: TaskCreateRequest,
-    db: Session = Depends(get_db)
+        request: TaskCreateRequest,
+        db: Session = Depends(get_db)
 ):
     employee = db.query(User).filter(User.id == request.employee_id).first()
 
@@ -195,7 +195,8 @@ def create_task(
         employee_id=request.employee_id,
         status="NEW",
         worked_hours=0.0,
-        photo_path=None
+        photo_path=None,
+        admin_comment=None
     )
 
     db.add(task)
@@ -207,9 +208,9 @@ def create_task(
 
 @app.put("/tasks/{task_id}", response_model=TaskResponse)
 def update_task(
-    task_id: int,
-    request: TaskUpdateRequest,
-    db: Session = Depends(get_db)
+        task_id: int,
+        request: TaskUpdateRequest,
+        db: Session = Depends(get_db)
 ):
     task = db.query(Task).filter(Task.id == task_id).first()
 
@@ -245,11 +246,32 @@ def update_task(
     return task_to_response(task)
 
 
+@app.delete("/tasks/{task_id}")
+def delete_task(
+        task_id: int,
+        db: Session = Depends(get_db)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Задача не найдена"
+        )
+
+    db.delete(task)
+    db.commit()
+
+    return {
+        "message": "Задача успешно удалена"
+    }
+
+
 @app.patch("/tasks/{task_id}/status", response_model=TaskResponse)
 def update_task_status(
-    task_id: int,
-    request: TaskStatusUpdateRequest,
-    db: Session = Depends(get_db)
+        task_id: int,
+        request: TaskStatusUpdateRequest,
+        db: Session = Depends(get_db)
 ):
     task = db.query(Task).filter(Task.id == task_id).first()
 
@@ -277,9 +299,9 @@ def update_task_status(
 
 @app.patch("/tasks/{task_id}/hours", response_model=TaskResponse)
 def update_task_hours(
-    task_id: int,
-    request: TaskHoursUpdateRequest,
-    db: Session = Depends(get_db)
+        task_id: int,
+        request: TaskHoursUpdateRequest,
+        db: Session = Depends(get_db)
 ):
     task = db.query(Task).filter(Task.id == task_id).first()
 
@@ -308,6 +330,29 @@ def update_task_hours(
 
     return task_to_response(task)
 
+
+@app.patch("/tasks/{task_id}/photo", response_model=TaskResponse)
+def update_task_photo(
+        task_id: int,
+        request: TaskPhotoUpdateRequest,
+        db: Session = Depends(get_db)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Задача не найдена"
+        )
+
+    task.photo_path = request.photo_path
+
+    db.commit()
+    db.refresh(task)
+
+    return task_to_response(task)
+
+
 @app.patch("/tasks/{task_id}/review", response_model=TaskResponse)
 def update_task_review(
         task_id: int,
@@ -334,46 +379,3 @@ def update_task_review(
     db.refresh(task)
 
     return task_to_response(task)
-
-
-@app.patch("/tasks/{task_id}/photo", response_model=TaskResponse)
-def update_task_photo(
-    task_id: int,
-    request: TaskPhotoUpdateRequest,
-    db: Session = Depends(get_db)
-):
-    task = db.query(Task).filter(Task.id == task_id).first()
-
-    if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Задача не найдена"
-        )
-
-    task.photo_path = request.photo_path
-
-    db.commit()
-    db.refresh(task)
-
-    return task_to_response(task)
-
-
-@app.delete("/tasks/{task_id}")
-def delete_task(
-    task_id: int,
-    db: Session = Depends(get_db)
-):
-    task = db.query(Task).filter(Task.id == task_id).first()
-
-    if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Задача не найдена"
-        )
-
-    db.delete(task)
-    db.commit()
-
-    return {
-        "message": "Задача успешно удалена"
-    }
