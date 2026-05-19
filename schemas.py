@@ -68,6 +68,9 @@ class TaskResponse(BaseModel):
     worked_hours: float
     photo_path: Optional[str] = None
     employee_name: Optional[str] = None
+    admin_comment: Optional[str] = None
 
     class Config:
         from_attributes = True
+    class TaskReviewUpdateRequest(BaseModel):
+        admin_comment: str

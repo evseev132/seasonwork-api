@@ -14,11 +14,17 @@ from schemas import (
     TaskResponse,
     TaskStatusUpdateRequest,
     TaskUpdateRequest,
+    TaskReviewUpdateRequest,
     UserRegisterRequest,
     UserResponse,
 )
 
 Base.metadata.create_all(bind=engine)
+
+with engine.begin() as connection:
+    connection.exec_driver_sql(
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS admin_comment TEXT"
+    )
 
 app = FastAPI(
     title="SeasonWork API",
@@ -43,7 +49,8 @@ def task_to_response(task: Task) -> TaskResponse:
         status=task.status,
         worked_hours=task.worked_hours,
         photo_path=task.photo_path,
-        employee_name=employee_name
+        employee_name=employee_name,
+        admin_comment=task.admin_comment
     )
 
 
@@ -295,6 +302,33 @@ def update_task_hours(
         )
 
     task.worked_hours = request.worked_hours
+
+    db.commit()
+    db.refresh(task)
+
+    return task_to_response(task)
+
+@app.patch("/tasks/{task_id}/review", response_model=TaskResponse)
+def update_task_review(
+        task_id: int,
+        request: TaskReviewUpdateRequest,
+        db: Session = Depends(get_db)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Задача не найдена"
+        )
+
+    if task.status != "DONE":
+        raise HTTPException(
+            status_code=400,
+            detail="Комментарий можно оставить только к выполненной задаче"
+        )
+
+    task.admin_comment = request.admin_comment.strip()
 
     db.commit()
     db.refresh(task)

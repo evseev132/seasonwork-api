@@ -31,6 +31,7 @@ class Task(Base):
     status = Column(String, nullable=False, default="NEW")
     worked_hours = Column(Float, nullable=False, default=0.0)
     photo_path = Column(String, nullable=True)
+    admin_comment = Column(String, nullable=True)
 
     employee = relationship(
         "User",
