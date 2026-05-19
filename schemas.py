@@ -57,6 +57,10 @@ class TaskPhotoUpdateRequest(BaseModel):
     photo_path: str
 
 
+class TaskReviewUpdateRequest(BaseModel):
+    admin_comment: str
+
+
 class TaskResponse(BaseModel):
     id: int
     title: str
@@ -72,5 +76,3 @@ class TaskResponse(BaseModel):
 
     class Config:
         from_attributes = True
-    class TaskReviewUpdateRequest(BaseModel):
-        admin_comment: str
