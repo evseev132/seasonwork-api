@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
@@ -38,6 +39,10 @@ app = FastAPI(
     description="API для Android-приложения SeasonWork",
     version="1.0.0"
 )
+
+
+def get_moscow_time() -> datetime:
+    return datetime.now(ZoneInfo("Europe/Moscow")).replace(tzinfo=None)
 
 
 def task_to_response(task: Task) -> TaskResponse:
@@ -300,7 +305,7 @@ def update_task_status(
             detail="Некорректный статус"
         )
 
-    now = datetime.utcnow()
+    now = get_moscow_time()
 
     if request.status == "IN_PROGRESS":
         task.status = "IN_PROGRESS"
