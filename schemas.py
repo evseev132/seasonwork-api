@@ -73,6 +73,8 @@ class TaskResponse(BaseModel):
     photo_path: Optional[str] = None
     employee_name: Optional[str] = None
     admin_comment: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
 
     class Config:
         from_attributes = True

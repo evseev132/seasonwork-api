@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -25,6 +26,12 @@ with engine.begin() as connection:
     connection.exec_driver_sql(
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS admin_comment TEXT"
     )
+    connection.exec_driver_sql(
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS started_at TIMESTAMP"
+    )
+    connection.exec_driver_sql(
+        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP"
+    )
 
 app = FastAPI(
     title="SeasonWork API",
@@ -50,7 +57,9 @@ def task_to_response(task: Task) -> TaskResponse:
         worked_hours=task.worked_hours,
         photo_path=task.photo_path,
         employee_name=employee_name,
-        admin_comment=task.admin_comment
+        admin_comment=task.admin_comment,
+        started_at=task.started_at.isoformat() if task.started_at is not None else None,
+        finished_at=task.finished_at.isoformat() if task.finished_at is not None else None
     )
 
 
@@ -196,7 +205,9 @@ def create_task(
         status="NEW",
         worked_hours=0.0,
         photo_path=None,
-        admin_comment=None
+        admin_comment=None,
+        started_at=None,
+        finished_at=None
     )
 
     db.add(task)
@@ -289,7 +300,34 @@ def update_task_status(
             detail="Некорректный статус"
         )
 
-    task.status = request.status
+    now = datetime.utcnow()
+
+    if request.status == "IN_PROGRESS":
+        task.status = "IN_PROGRESS"
+
+        if task.started_at is None:
+            task.started_at = now
+
+        task.finished_at = None
+
+    elif request.status == "DONE":
+        task.status = "DONE"
+
+        if task.started_at is None:
+            task.started_at = now
+
+        task.finished_at = now
+
+        seconds = (task.finished_at - task.started_at).total_seconds()
+        hours = seconds / 3600
+
+        task.worked_hours = round(hours, 2)
+
+    elif request.status == "NEW":
+        task.status = "NEW"
+        task.started_at = None
+        task.finished_at = None
+        task.worked_hours = 0.0
 
     db.commit()
     db.refresh(task)

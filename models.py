@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -28,10 +28,15 @@ class Task(Base):
     date = Column(String, nullable=False)
     location = Column(String, nullable=False)
     employee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     status = Column(String, nullable=False, default="NEW")
     worked_hours = Column(Float, nullable=False, default=0.0)
+
     photo_path = Column(String, nullable=True)
     admin_comment = Column(String, nullable=True)
+
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
 
     employee = relationship(
         "User",
